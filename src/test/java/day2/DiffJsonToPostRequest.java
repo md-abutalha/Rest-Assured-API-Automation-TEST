@@ -66,7 +66,7 @@ public class DiffJsonToPostRequest {
 
 
     //2. post request using org.json
-    @Test(priority = 1)
+//    @Test(priority = 1)
     void tesPostUsingORGJson(){
 
         JSONObject data = new JSONObject();
@@ -99,7 +99,7 @@ public class DiffJsonToPostRequest {
         System.out.println("Extracted ID: " + id);
     }
 
-    @Test(priority = 2, dependsOnMethods = {"tesPostUsingORGJson"})
+//    @Test(priority = 2, dependsOnMethods = {"tesPostUsingORGJson"})
     void testDeleteORGJson(){
         given()
                 .when()
@@ -108,6 +108,42 @@ public class DiffJsonToPostRequest {
                 .statusCode(200)
                 .log().all();
     }
+
+    // POST Request body using POJO class.
+    @Test(priority = 1)
+    void tesPostRequestBodyUsingPOJO(){
+
+        JSONObject data = new JSONObject();
+        data.put("name", "Talha");
+        data.put("location", "Canada");
+        data.put("phone", "165498765");
+
+        String coursesArr[] = {"Java", "Python"};
+        data.put("courses", coursesArr);
+
+        // Use Response object to extract data
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .body(data.toString()) // <-- FIXED: Added .toString() so it sends raw JSON
+
+                .when()
+                .post("http://localhost:3000/students");
+
+        // 1. Validate
+        response.then()
+                .statusCode(201)
+                .body("name", equalTo("Talha"))
+                .body("courses[0]", equalTo("Java"))
+                .body("courses[1]", equalTo("Python"))
+                .header("Content-Type", "application/json")
+                .log().all();
+
+        // 2. Extract the generated ID for the DELETE request
+        id = response.jsonPath().getString("id");
+        System.out.println("Extracted ID: " + id);
+    }
+
+
 
 
 
