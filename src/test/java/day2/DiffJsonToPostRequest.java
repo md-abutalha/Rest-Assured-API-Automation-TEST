@@ -1,13 +1,18 @@
 package day2;
 
 import java.beans.JavaBean;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
 import io.restassured.http.ContentType;
 import io.restassured.response.Response;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 import org.testng.annotations.Test;
 
 import static io.restassured.RestAssured.given;
@@ -110,21 +115,21 @@ public class DiffJsonToPostRequest {
     }
 
     // POST Request body using POJO class.
-    @Test(priority = 1)
+   // @Test(priority = 1)
     void tesPostRequestBodyUsingPOJO(){
 
-        JSONObject data = new JSONObject();
-        data.put("name", "Talha");
-        data.put("location", "Canada");
-        data.put("phone", "165498765");
+        Pojo_PostClass data = new Pojo_PostClass();
+        data.setName("Talha");
+        data.setLocation("Dhaka");
+        data.setPhone("01733993993");
 
         String coursesArr[] = {"Java", "Python"};
-        data.put("courses", coursesArr);
+        data.setCourses(coursesArr); // This will now work perfectly! // Or use Arrays.asList("Java", "Python") depending on your POJO
 
         // Use Response object to extract data
         Response response = given()
                 .contentType(ContentType.JSON)
-                .body(data.toString()) // <-- FIXED: Added .toString() so it sends raw JSON
+                .body(data) // Pass the POJO directly
 
                 .when()
                 .post("http://localhost:3000/students");
@@ -133,7 +138,7 @@ public class DiffJsonToPostRequest {
         response.then()
                 .statusCode(201)
                 .body("name", equalTo("Talha"))
-                .body("courses[0]", equalTo("Java"))
+                .body("courses[0]", equalTo("Java")) // This will now pass
                 .body("courses[1]", equalTo("Python"))
                 .header("Content-Type", "application/json")
                 .log().all();
@@ -143,8 +148,57 @@ public class DiffJsonToPostRequest {
         System.out.println("Extracted ID: " + id);
     }
 
+    // @Test(priority = 2, dependsOnMethods = {"tesPostRequestBodyUsingPOJO"})
+    void testDeletePojoClass(){
+        given()
+                .when()
+                .delete("http://localhost:3000/students/" + id)
+                .then()
+                .statusCode(200)
+                .log().all();
+    }
 
 
 
+    // 4. Post request with external json file
+    @Test(priority = 1)
+    void tesPostRequestWithExternalJsonFile() throws FileNotFoundException {
+
+        File f = new File(".\\body.json");
+        FileReader fr = new FileReader(f);
+        JSONTokener jt = new JSONTokener(fr);
+        JSONObject data = new JSONObject(jt);
+
+        // Use Response object to extract data
+        Response response = given()
+                .contentType(ContentType.JSON)
+                .body(data.toString()) // Pass the POJO directly
+
+                .when()
+                .post("http://localhost:3000/students");
+
+        // 1. Validate
+        response.then()
+                .statusCode(201)
+                .body("name", equalTo("Talha"))
+                .body("courses[0]", equalTo("Java")) // This will now pass
+                .body("courses[1]", equalTo("Python"))
+                .header("Content-Type", "application/json")
+                .log().all();
+
+        // 2. Extract the generated ID for the DELETE request
+        id = response.jsonPath().getString("id");
+        System.out.println("Extracted ID: " + id);
+    }
+
+    @Test(priority = 2, dependsOnMethods = {"tesPostRequestBodyUsingPOJO"})
+    void testDeleteExternalJson(){
+        given()
+                .when()
+                .delete("http://localhost:3000/students/" + id)
+                .then()
+                .statusCode(200)
+                .log().all();
+    }
 
 }
